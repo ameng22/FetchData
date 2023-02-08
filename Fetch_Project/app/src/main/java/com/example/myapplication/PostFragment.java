@@ -8,6 +8,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.textfield.TextInputEditText;
@@ -19,8 +21,10 @@ import retrofit2.Response;
 
 public class PostFragment extends Fragment {
 
-    TextInputEditText uname,fname,lname,email;
+    TextInputEditText uname,job;
     Button submitBtn;
+    ProgressBar loadingPB;
+    TextView responseTxt;
 
     public PostFragment() {
         // Required empty public constructor
@@ -34,17 +38,28 @@ public class PostFragment extends Fragment {
         View postView = inflater.inflate(R.layout.fragment_post, container, false);
 
         uname = (TextInputEditText) postView.findViewById(R.id.user_name);
-        fname = (TextInputEditText) postView.findViewById(R.id.first_name);
-        lname = (TextInputEditText) postView.findViewById(R.id.last_name);
-        email = (TextInputEditText) postView.findViewById(R.id.email);
+        job = (TextInputEditText) postView.findViewById(R.id.editJob);
+//        lname = (TextInputEditText) postView.findViewById(R.id.last_name);
+//        email = (TextInputEditText) postView.findViewById(R.id.email);
 
         submitBtn = (Button) postView.findViewById(R.id.post_submit);
+
+        responseTxt = (TextView) postView.findViewById(R.id.response);
+
+        loadingPB = (ProgressBar) postView.findViewById(R.id.LoadingPB);
 
         submitBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                saveUser(createUser());
+                if (uname.getText().toString().isEmpty() && job.getText().toString().isEmpty()) {
+                    Toast.makeText(getActivity(), "Please enter both the values", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // calling a method to post the data and passing our name and job.
+                postData(uname.getText().toString(), job.getText().toString());
+
+                loadingPB.setVisibility(View.VISIBLE);
 
             }
         });
@@ -52,28 +67,34 @@ public class PostFragment extends Fragment {
         return postView;
     }
 
-    public UserRequest createUser(){
-        UserRequest userRequest = new UserRequest();
-        userRequest.setUsername(uname.getText().toString());
-        userRequest.setFirst_name(fname.getText().toString());
-        userRequest.setLast_name(lname.getText().toString());
-        userRequest.setEmail(email.getText().toString());
+//    public UserRequest createUser(){
+//        UserRequest userRequest = new UserRequest();
+//        userRequest.setUsername(uname.getText().toString());
+//        userRequest.setFirst_name(fname.getText().toString());
+//        userRequest.setLast_name(lname.getText().toString());
+//        userRequest.setEmail(email.getText().toString());
+//
+//        return userRequest;
+//    }
 
-        return userRequest;
-    }
+    public void postData(String name, String job){
 
-    public void saveUser(UserRequest userRequest){
 
-        Call<UserResponse> userResponseCall = PostApiClient.getUserService().saveUser(userRequest);
+        UserResponse userResponse = new UserResponse(name,job);
+
+        Call<UserResponse> userResponseCall = PostApiClient.getUserService().saveUser(userResponse);
         userResponseCall.enqueue(new Callback<UserResponse>() {
             @Override
             public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
 
                 if (response.isSuccessful()){
                     Toast.makeText(getActivity(), "Request Success", Toast.LENGTH_SHORT).show();
-                }
-                else{
-                    Toast.makeText(getActivity(), "Request Failed", Toast.LENGTH_SHORT).show();
+
+                    UserResponse responseFromApi = response.body();
+
+                    responseTxt.setText("Response Code: " + response.code() + "\nName :"+ responseFromApi.getUsername()+"\nJob :"+ responseFromApi.getJob());
+
+                    loadingPB.setVisibility(View.GONE);
                 }
 
             }
@@ -81,7 +102,7 @@ public class PostFragment extends Fragment {
             @Override
             public void onFailure(Call<UserResponse> call, Throwable t) {
 
-                Toast.makeText(getActivity(), "Request Failed  " + t.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                responseTxt.setText("Error found is : " + t.getMessage());
 
             }
         });
